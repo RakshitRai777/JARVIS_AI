@@ -1,0 +1,28 @@
+{
+  "queue": [
+    {
+      "title": "Pehli Bar (Bohemia Rap MegaMix) | Prod./Mixed By @RoshBlazze | Pesa Nasha Pyar Mashup (2022)",
+      "artist": "Blazze Music",
+      "album": "",
+      "duration": 185,
+      "youtube_url": "https://www.youtube.com/watch?v=wLxvFWd6RNQ",
+      "thumbnail": "https://i.ytimg.com/vi_webp/wLxvFWd6RNQ/maxresdefault.webp",
+      "video_id": "wLxvFWd6RNQ",
+      "added_at": "2025-08-10T13:27:18.107994"
+    },
+    {
+      "title": "Queen \u2013 Bohemian Rhapsody (Official Video Remastered)",
+      "artist": "Queen Official",
+      "album": "",
+      "duration": 359,
+      "youtube_url": "https://www.youtube.com/watch?v=fJ9rUzIMcZQ",
+      "thumbnail": "https://i.ytimg.com/vi/fJ9rUzIMcZQ/hqdefault.jpg",
+      "video_id": "fJ9rUzIMcZQ",
+      "added_at": "2025-08-10T13:27:51.943344"
+    }
+  ],
+  "history": [],
+  "current_index": 0,
+  "auto_play": true,
+  "current_track": null
+}

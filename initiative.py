@@ -1,9 +1,17 @@
-from awareness import is_idle
+import threading
+from logger import info, debug
 
-def should_speak(importance="low"):
-    score = 0
-    if importance == "high":
-        score += 3
-    if is_idle(240):
-        score += 2
-    return score >= 4
+INTERRUPT_EVENT = threading.Event()
+
+def trigger_interrupt():
+    INTERRUPT_EVENT.set()
+    info("Interrupt triggered")
+
+def clear_interrupt():
+    INTERRUPT_EVENT.clear()
+    debug("Interrupt cleared")
+
+def is_interrupted():
+    state = INTERRUPT_EVENT.is_set()
+    debug(f"Interrupt state checked: {state}")
+    return state

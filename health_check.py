@@ -3,6 +3,7 @@ import sounddevice as sd
 from groq_ai import GroqAI
 from memory import get_short_context
 from config import VOSK_MODEL_PATH
+from logger import info, error
 
 def check_microphone():
     try:
@@ -13,8 +14,7 @@ def check_microphone():
 
 def check_groq():
     try:
-        ai = GroqAI()
-        ai.ask("Say OK")
+        GroqAI().ask("Say OK")
         return True
     except Exception:
         return False
@@ -23,6 +23,8 @@ def check_vosk():
     return os.path.exists(VOSK_MODEL_PATH)
 
 def run_health_check():
+    info("Running health check")
+
     report = {
         "Microphone": check_microphone(),
         "Groq API": check_groq(),
@@ -30,9 +32,8 @@ def run_health_check():
         "Memory": bool(get_short_context())
     }
 
-    print("\n🩺 JARVIS HEALTH REPORT")
     for k, v in report.items():
-        print(f"{k}: {'✅ OK' if v else '❌ FAIL'}")
+        info(f"{k}: {'OK' if v else 'FAIL'}")
 
     return report
 

@@ -1,5 +1,6 @@
 import json
 import os
+from logger import debug, info
 
 MEMORY_DIR = "memory"
 os.makedirs(MEMORY_DIR, exist_ok=True)
@@ -21,14 +22,19 @@ def add_short(user, assistant):
     data = _load(SHORT_FILE)
     data.append({"user": user, "assistant": assistant})
     _save(SHORT_FILE, data[-6:])
+    info("Short-term memory updated")
 
 def get_short_context():
-    return "\n".join(f"User: {d['user']} | FRIDAY: {d['assistant']}" for d in _load(SHORT_FILE))
+    return "\n".join(
+        f"User: {d['user']} | FRIDAY: {d['assistant']}"
+        for d in _load(SHORT_FILE)
+    )
 
 def add_long(text):
     data = _load(LONG_FILE)
     data.append(text)
     _save(LONG_FILE, data)
+    info("Long-term memory updated")
 
 def get_long_facts():
     return "\n".join(_load(LONG_FILE))

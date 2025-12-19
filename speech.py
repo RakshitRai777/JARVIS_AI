@@ -1,37 +1,30 @@
-import os
-import json
+# speech.py
+import whisper
 import sounddevice as sd
-from vosk import Model, KaldiRecognizer
-from config import VOSK_MODEL_PATH
-from logger import info, warn, debug
+import numpy as np
+import scipy.io.wavfile as wav
+import tempfile
 
-if not os.path.exists(VOSK_MODEL_PATH):
-    raise RuntimeError(f"Vosk model not found at: {VOSK_MODEL_PATH}")
+print("🔊 Loading Whisper model...")
+model = whisper.load_model("base")  # or "small"
 
-SAMPLE_RATE = 16000
-model = Model(VOSK_MODEL_PATH)
 
-def listen_command(timeout=6) -> str:
-    info("Listening for user command")
-    recognizer = KaldiRecognizer(model, SAMPLE_RATE)
+def listen_command(duration=5):
+    samplerate = 16000
+    print("🎤 Listening...")
 
-    with sd.RawInputStream(
-        samplerate=SAMPLE_RATE,
-        blocksize=8000,
-        dtype="int16",
+    recording = sd.rec(
+        int(duration * samplerate),
+        samplerate=samplerate,
         channels=1,
-    ) as stream:
+        dtype="int16"
+    )
+    sd.wait()
 
-        for _ in range(int(timeout * 2)):
-            data, _ = stream.read(4000)
-            if recognizer.AcceptWaveform(bytes(data)):
-                result = json.loads(recognizer.Result())
-                text = result.get("text", "").strip()
-                recognizer.Reset()
+    with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as f:
+        wav.write(f.name, samplerate, recording)
+        result = model.transcribe(f.name)
 
-                if text:
-                    info(f"Recognized speech: {text}")
-                    return text
-
-    warn("No command recognized")
-    return ""
+    text = result["text"].strip()
+    print(f"🧠 Heard: {text}")
+    return text

@@ -2,44 +2,28 @@
 __pycache__/
 *.pyc
 *.pyo
-*.pyd
 
-# Virtual environments
-venv/
-.env/
-.env.*
+# Environment
 .env
+.venv/
+venv/
 
-# OS files
+# Models (DO NOT COMMIT)
+vosk-model-*/
+models/
+*.pt
+*.bin
+
+# Whisper cache
+.whisper/
+
+# Memory (runtime data)
+memory/
+*.json
+
+# OS
 .DS_Store
 Thumbs.db
 
-# Logs
-*.log
-
-# Audio / temp files
+# Audio test files
 *.wav
-*.mp3
-*.ogg
-
-# Vosk models (VERY IMPORTANT – large files)
-models/
-
-# Memory files (runtime generated)
-memory/short.json
-memory/long.json
-
-# Build / distribution
-build/
-dist/
-*.spec
-
-# IDEs
-.vscode/
-.idea/
-
-# Gradio cache
-.gradio/
-
-# PyInstaller temp
-*.toc

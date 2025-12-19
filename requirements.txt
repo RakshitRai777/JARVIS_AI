@@ -1,19 +1,5 @@
-# Core audio & speech
-sounddevice==0.4.6
-vosk==0.3.45
-pyttsx3==2.90
-pyaudio
-
-# AI / API
-requests==2.31.0
-python-dotenv==1.0.1
-
-# Computer vision & screen
-opencv-python==4.10.0.84
-pyautogui==0.9.54
-
-# Knowledge & utilities
-wikipedia==1.4.0
-
-# Core Python helpers
-numpy==1.26.4
+vosk
+sounddevice
+pyttsx3
+requests
+python-dotenv

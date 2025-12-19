@@ -1,97 +1,101 @@
-import threading
+# assistant.py
+# FRIDAY – JARVIS-style AI Assistant (Optimized)
 
 from wakeword import WakeWordDetector
-from speech import listen_command
 from tts_engine import speak
 from groq_ai import GroqAI
-from interrupt_listener import interrupt_listener
-from autonomy import autonomous_loop
-from awareness import update_activity
-from memory import add_short, get_short_context, get_long_facts
-from habits import log_activity
-from commands import handle_command
 from config import ASSISTANT_NAME
+from memory import add_short, add_long, get_short_context, get_long_facts
+from humanize import human_pause
 
-# 🔹 Central logger
-from logger import info, warn, error, debug
+# Whisper is heavy → load ONLY after wake word
+whisper_loaded = False
+listen_command = None
+
+
+def should_store_long(text: str) -> bool:
+    triggers = [
+        "my name is",
+        "remember this",
+        "remember that",
+        "this is important",
+        "important"
+    ]
+    return any(t in text.lower() for t in triggers)
 
 
 def main():
-    info("Starting FRIDAY core systems")
+    global whisper_loaded, listen_command
 
-    # Background systems
-    threading.Thread(
-        target=interrupt_listener,
-        daemon=True,
-        name="InterruptListener"
-    ).start()
-    info("Interrupt listener started")
-
-    threading.Thread(
-        target=autonomous_loop,
-        daemon=True,
-        name="AutonomyLoop"
-    ).start()
-    info("Autonomy loop started")
-
-    ai = GroqAI()
+    print("🔧 Initializing FRIDAY core systems...")
     wakeword = WakeWordDetector()
+    ai = GroqAI()
 
-    speak(f"{ASSISTANT_NAME} online, sir.")
-    info(f"{ASSISTANT_NAME} is online and ready")
+    speak(f"{ASSISTANT_NAME} systems online. Ready, sir.")
+    print(f"🔥 Say '{ASSISTANT_NAME}' to wake me.")
 
     while True:
-        info("Listening for wake word...")
-        if wakeword.listen():
-            info("Wake word detected")
+        # 🟢 WAIT FOR WAKE WORD (FAST + LIGHT)
+        if not wakeword.listen():
+            continue
 
-            update_activity()
-            speak("Yes sir?")
-            info("Prompted user for command")
+        # 🧠 Lazy-load Whisper (ONLY ONCE)
+        if not whisper_loaded:
+            print("🔊 Loading Whisper speech engine...")
+            from speech import listen_command  # Whisper-based
+            whisper_loaded = True
 
-            user = listen_command()
+        human_pause()
+        speak("Yes sir?")
+        print("🎤 Listening...")
 
-            if not user:
-                warn("No speech detected after wake word")
-                continue
+        # 🎤 SPEECH → TEXT
+        user_text = listen_command()
 
-            info(f"User said: {user}")
-            log_activity(user)
+        if not user_text:
+            speak("I didn't catch that.")
+            continue
 
-            # Handle direct commands (open apps, time, etc.)
-            command_response = handle_command(user)
-            if command_response:
-                info(f"Command handled locally: {command_response}")
-                speak(command_response)
-                continue
+        print(f"🧠 User said: {user_text}")
 
-            # AI prompt
-            prompt = f"""
-You are FRIDAY.
-Context:
-{get_short_context()}
-Facts:
-{get_long_facts()}
-User: {user}
+        # 📴 EXIT COMMAND
+        if user_text.lower() in ["exit", "quit", "shutdown friday"]:
+            speak("Shutting down. Goodbye sir.")
+            break
+
+        # 🧠 BUILD CONTEXT
+        short_context = get_short_context()
+        long_facts = get_long_facts()
+
+        prompt = f"""
+You are FRIDAY, a calm, intelligent, human-like AI assistant.
+
+Long-term memory:
+{long_facts}
+
+Recent conversation:
+{short_context}
+
+User says:
+{user_text}
+
+Respond concisely, naturally, and professionally like JARVIS.
 """
 
-            debug("Sending prompt to Groq AI")
-            response = ai.ask(prompt)
+        # 🤖 GROQ AI RESPONSE
+        response = ai.ask(prompt)
 
-            if not response:
-                error("AI returned empty response")
-                speak("Sorry sir, something went wrong.")
-                continue
+        # 🧠 STORE SHORT-TERM MEMORY
+        add_short(user_text, response)
 
-            info(f"FRIDAY response: {response}")
-            add_short(user, response)
-            speak(response)
+        # 🧠 STORE LONG-TERM MEMORY IF IMPORTANT
+        if should_store_long(user_text):
+            add_long(user_text)
+            speak("I'll remember that, sir.")
+
+        print(f"🤖 FRIDAY: {response}")
+        speak(response)
 
 
 if __name__ == "__main__":
-    try:
-        main()
-    except KeyboardInterrupt:
-        warn("FRIDAY shutdown requested by user")
-    except Exception as e:
-        error(f"Fatal error in assistant: {e}")
+    main()

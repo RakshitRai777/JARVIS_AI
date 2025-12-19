@@ -1,40 +1,65 @@
+# memory.py
 import json
 import os
-from logger import debug, info
+from datetime import datetime
 
 MEMORY_DIR = "memory"
+SHORT = os.path.join(MEMORY_DIR, "short_term.json")
+LONG = os.path.join(MEMORY_DIR, "long_term.json")
+
 os.makedirs(MEMORY_DIR, exist_ok=True)
 
-SHORT_FILE = f"{MEMORY_DIR}/short.json"
-LONG_FILE = f"{MEMORY_DIR}/long.json"
 
-def _load(path):
+def _safe_load(path):
     if not os.path.exists(path):
         return []
-    with open(path, "r") as f:
-        return json.load(f)
 
-def _save(path, data):
-    with open(path, "w") as f:
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            content = f.read().strip()
+            if not content:
+                return []
+            return json.loads(content)
+    except Exception:
+        # auto-heal corrupted memory
+        return []
+
+
+def _safe_save(path, data):
+    with open(path, "w", encoding="utf-8") as f:
         json.dump(data, f, indent=2)
 
+
+# ---------- SHORT TERM ----------
 def add_short(user, assistant):
-    data = _load(SHORT_FILE)
-    data.append({"user": user, "assistant": assistant})
-    _save(SHORT_FILE, data[-6:])
-    info("Short-term memory updated")
+    data = _safe_load(SHORT)
+    data.append({
+        "user": user,
+        "assistant": assistant,
+        "time": datetime.now().isoformat()
+    })
+    data = data[-6:]  # keep last 6
+    _safe_save(SHORT, data)
+
 
 def get_short_context():
-    return "\n".join(
-        f"User: {d['user']} | FRIDAY: {d['assistant']}"
-        for d in _load(SHORT_FILE)
+    data = _safe_load(SHORT)
+    return " | ".join(
+        f"User: {d['user']} / FRIDAY: {d['assistant']}"
+        for d in data[-3:]
     )
 
+
+# ---------- LONG TERM ----------
 def add_long(text):
-    data = _load(LONG_FILE)
-    data.append(text)
-    _save(LONG_FILE, data)
-    info("Long-term memory updated")
+    data = _safe_load(LONG)
+    data.append({
+        "fact": text,
+        "time": datetime.now().isoformat()
+    })
+    _safe_save(LONG, data)
+
 
 def get_long_facts():
-    return "\n".join(_load(LONG_FILE))
+    data = _safe_load(LONG)
+    return " | ".join(d["fact"] for d in data[-5:])

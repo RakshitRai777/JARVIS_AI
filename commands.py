@@ -1,18 +1,19 @@
-import webbrowser
 import datetime
-from logger import info
+import webbrowser
+import subprocess
 
 def handle_command(text):
     text = text.lower()
 
     if "time" in text:
-        response = f"The time is {datetime.datetime.now().strftime('%I:%M %p')}."
-        info("Handled time command")
-        return response
+        return datetime.datetime.now().strftime("Time is %I:%M %p")
 
     if "open youtube" in text:
         webbrowser.open("https://youtube.com")
-        info("Opening YouTube")
         return "Opening YouTube."
+
+    if "open chrome" in text:
+        subprocess.Popen("chrome")
+        return "Opening Chrome."
 
     return None

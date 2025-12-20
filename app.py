@@ -155,11 +155,25 @@ def jarvis_chat(message, history):
     if not message.strip():
         return history
 
-    history.append((message, "<span class='thinking'>Thinking</span>"))
-    yield history
+    if not isinstance(history, list):
+        history = []
 
+    # User message
+    history.append({
+        "role": "user",
+        "content": message
+    })
+
+    # Thinking placeholder
+    history.append({
+        "role": "assistant",
+        "content": "<span class='thinking'>Thinking</span>"
+    })
+
+    yield history
     time.sleep(0.6)
 
+    # Generate response
     if any(w in message.lower() for w in ["look", "screen", "scan"]):
         response = vision_module.get_vision_analysis(
             message, main.session, main.GROQ_API_KEY
@@ -167,21 +181,24 @@ def jarvis_chat(message, history):
     else:
         response = main.get_groq_response(message)
 
-    # Speak + waveform
+    # Speak
     main.speak(response)
-    response_html = (
-        response +
-        "<div class='wave'><span></span><span></span><span></span><span></span></div>"
-    )
 
-    history[-1] = (message, response_html)
+    # Final assistant message with waveform
+    history[-1] = {
+        "role": "assistant",
+        "content": response +
+        "<div class='wave'><span></span><span></span><span></span><span></span></div>"
+    }
+
     yield history
+
 
 
 # =====================================================
 # UI
 # =====================================================
-with gr.Blocks(title="J.A.R.V.I.S", css=custom_css) as demo:
+with gr.Blocks(title="J.A.R.V.I.S") as demo:
     gr.Markdown("<div id='jarvis-title'>J.A.R.V.I.S</div>")
 
     with gr.Column(elem_id="jarvis-shell"):
@@ -194,9 +211,8 @@ with gr.Blocks(title="J.A.R.V.I.S", css=custom_css) as demo:
 
         send.click(jarvis_chat, [msg, chatbot], chatbot)
         msg.submit(jarvis_chat, [msg, chatbot], chatbot)
-        send.click(lambda: "", None, msg)
-        msg.submit(lambda: "", None, msg)
-
+        send.click(lambda: "", None, msg, queue=False)
+        msg.submit(lambda: "", None, msg, queue=False)
 
 # =====================================================
 # Background systems
@@ -204,4 +220,4 @@ with gr.Blocks(title="J.A.R.V.I.S", css=custom_css) as demo:
 if __name__ == "__main__":
     threading.Thread(target=main.load_vosk, daemon=True).start()
     threading.Thread(target=main.background_listener, daemon=True).start()
-    demo.launch()
+    demo.launch(css=custom_css)

@@ -2,4 +2,7 @@
 jarvis_memory.json
 vosk-model-small-en-us-0.15/
 __pycache__/
-test_jarvis.py
+*.pyc
+*.log
+.DS_Store
+Thumbs.db

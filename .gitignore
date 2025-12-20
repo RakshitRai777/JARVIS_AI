@@ -1,6 +1,6 @@
 .env
 jarvis_memory.json
-vosk-model-small-en-us-0.15/
+vosk-model-en-us-0.22/
 __pycache__/
 *.pyc
 *.log

@@ -212,7 +212,7 @@ def get_groq_response(prompt):
 def load_vosk():
     global vosk_model, vosk_ready
     logging.info("🚀 Loading Brain Modules...")
-    VOSK_PATH = "vosk-model-en-us-0.22"
+    VOSK_PATH = os.path.join("models", "vosk-model-en-us-0.22")
     if not os.path.exists(VOSK_PATH):
         raise RuntimeError(f"Vosk model not found at {VOSK_PATH}")
     vosk_model = Model(VOSK_PATH)
@@ -329,6 +329,19 @@ def brain_loop():
             answer = get_groq_response(query)
             if not interrupt_requested: # Double-check before speaking
                 speak(answer)
+
+def wipe_system_memory():
+    """Wipes the session memory and deletes temporary vision images."""
+    global session_memory
+    session_memory = []
+    if os.path.exists("session_memory.json"):
+        os.remove("session_memory.json")
+    
+    # Delete vision screenshots if they exist
+    for img in ["temp_screen.png", "temp_resized.png"]:
+        if os.path.exists(img):
+            os.remove(img)
+    return "Memory and temporary files have been wiped, Sir."
 
 if __name__ == "__main__":
     threading.Thread(target=load_vosk, daemon=True).start()

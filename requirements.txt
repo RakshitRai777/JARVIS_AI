@@ -1,5 +1,7 @@
-vosk
-sounddevice
-pyttsx3
 requests
 python-dotenv
+vosk
+sounddevice
+edge-tts
+pydub
+simpleaudio

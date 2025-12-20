@@ -1,29 +1,4 @@
-# Python cache
-__pycache__/
-*.pyc
-*.pyo
-
-# Environment
 .env
-.venv/
-venv/
-
-# Models (DO NOT COMMIT)
-vosk-model-*/
-models/
-*.pt
-*.bin
-
-# Whisper cache
-.whisper/
-
-# Memory (runtime data)
-memory/
-*.json
-
-# OS
-.DS_Store
-Thumbs.db
-
-# Audio test files
-*.wav
+jarvis_memory.json
+vosk-model-small-en-us-0.15/
+__pycache__/

@@ -34,7 +34,24 @@ pip install -r requirements.txt
 
 ---
 
+🛡️ Usage & Licensing Notice
+
+⚠️ IMPORTANT
+
+This repository is publicly viewable but NOT open-source.
+
+❌ No permission is granted to copy, reuse, modify, or redistribute this code
+
+❌ Commercial or academic reuse is not allowed
+
+✅ Viewing and architectural learning is permitted
+
+All rights are reserved by the author.
+
+---
+
 ▶️ Usage
+
 Run the assistant locally:
 python jarvis.py
 
@@ -47,9 +64,11 @@ Outputs are generated in real time.
 ---
 
 📜 License
+
 This project is licensed under the MIT License — see the LICENSE file for details.
 
 ---
 
 💡 Inspiration
+
 Inspired by cinematic AI systems like JARVIS, this project aims to replicate natural, hands-free, and creative interaction with modern AI models.

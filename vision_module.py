@@ -1,58 +1,77 @@
 import pyautogui
-import base64
+import pytesseract
+import cv2
+import numpy as np
+import pygetwindow as gw
 import os
-import requests
-from PIL import Image
+import tempfile
 
-def get_vision_analysis(user_query, session, api_key):
-    raw_path = "temp_screen.png"
-    resized_path = "temp_resized.png"
-    
+pytesseract.pytesseract.tesseract_cmd = (
+    r"C:\Program Files\Tesseract-OCR\tesseract.exe"
+)
+
+def get_active_window():
     try:
-        # 1. Capture and Resize
-        pyautogui.screenshot(raw_path)
-        img = Image.open(raw_path)
-        img.thumbnail((1280, 720)) 
-        img.save(resized_path, "PNG", optimize=True)
+        win = gw.getActiveWindow()
+        if win:
+            return {
+                "title": win.title,
+                "width": win.width,
+                "height": win.height
+            }
+    except:
+        pass
+    return None
 
-        with open(resized_path, "rb") as f:
-            base64_image = base64.b64encode(f.read()).decode('utf-8')
 
-        # 2. Use the verified working Model ID
-        MODEL = "meta-llama/llama-4-scout-17b-16e-instruct" 
-        url = "https://api.groq.com/openai/v1/chat/completions"
-        
-        headers = {
-            "Authorization": f"Bearer {api_key}",
-            "Content-Type": "application/json"
-        }
+def extract_text(image):
+    gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+    gray = cv2.threshold(gray, 150, 255, cv2.THRESH_BINARY)[1]
+    return pytesseract.image_to_string(gray)
 
-        payload = {
-            "model": MODEL,
-            "messages": [
-                {
-                    "role": "user",
-                    "content": [
-                        {"type": "text", "text": f"Sir, I have analyzed the screen for you. Regarding your request '{user_query}':"},
-                        {"type": "image_url", "image_url": {"url": f"data:image/png;base64,{base64_image}"}}
-                    ]
-                }
-            ],
-            "temperature": 0.2
-        }
 
-        response = session.post(url, headers=headers, json=payload, timeout=30)
-        res = response.json()
+def get_vision_analysis(query, session, api_key):
+    # 1️⃣ Screenshot
+    screenshot = pyautogui.screenshot()
+    img = cv2.cvtColor(np.array(screenshot), cv2.COLOR_RGB2BGR)
 
-        if 'choices' in res:
-            return res['choices'][0]['message']['content']
-        else:
-            return f"I encountered an error with the vision server: {res.get('error', {}).get('message')}"
+    # 2️⃣ OCR
+    text = extract_text(img)
+    text = text.strip()
 
-    except Exception as e:
-        return f"Visual sensors are experiencing interference: {e}"
-    finally:
-        # Manual history/temp wipe as per user instructions
-        for p in [raw_path, resized_path]:
-            if os.path.exists(p):
-                os.remove(p)
+    # 3️⃣ Active window
+    window = get_active_window()
+
+    # 4️⃣ Build structured observation
+    observation = {
+        "active_window": window,
+        "screen_resolution": screenshot.size,
+        "visible_text_sample": text[:1500] if text else "No readable text detected"
+    }
+
+    # 5️⃣ Ask Groq to reason
+    prompt = f"""
+You are Jarvis with human-like vision understanding.
+
+OBSERVATION FROM SCREEN:
+{observation}
+
+USER QUESTION:
+{query}
+
+Explain what is on the screen and answer the user's question.
+Be precise and factual. Do not hallucinate.
+"""
+
+    r = session.post(
+        "https://api.groq.com/openai/v1/chat/completions",
+        json={
+            "model": "llama-3.3-70b-versatile",
+            "messages": [{"role": "user", "content": prompt}],
+            "temperature": 0.2,
+            "max_tokens": 400
+        },
+        timeout=15
+    )
+
+    return r.json()["choices"][0]["message"]["content"]

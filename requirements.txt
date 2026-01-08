@@ -1,16 +1,30 @@
+# --- Core UI & Interaction ---
 flet>=0.10.0
 python-dotenv>=1.0.0
+requests>=2.31.0
+certifi>=2023.7.22
+
+# --- Audio & Voice (TTS/STT) ---
 pydub>=0.25.1
 simpleaudio>=1.0.4
 sounddevice>=0.4.6
 vosk>=0.3.45
 edge-tts>=6.1.9
-duckduckgo-search>=3.9.3
-requests>=2.31.0
+
+# --- Intelligence & Memory ---
+numpy>=1.24.0
+sentence-transformers>=2.2.2
+torch>=2.0.0
+
+# --- Vision System ---
 pyautogui>=0.9.54
 Pillow>=10.0.0
-numpy>=1.24.0
-pytesseract
-opencv-python
-pygetwindow
-numpy
+pytesseract>=0.3.10
+opencv-python>=4.8.0
+pygetwindow>=0.0.9
+
+# --- System Tools & Self-Healing ---
+psutil>=5.9.5
+pycaw>=2.0.1
+comtypes>=1.2.0
+duckduckgo-search>=3.9.3

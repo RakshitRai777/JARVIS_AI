@@ -3,62 +3,77 @@ import json
 import psutil
 import requests
 import threading
+from pathlib import Path
+
 from config import Config
 from brain_manager import BrainManager
-import main
 
-MEMORY_FILE = "healing_memory.json"
+# ===================== STATE =====================
 
-last_heartbeat = time.time()
-last_heal_time = {}
+MEMORY_FILE = Config.BASE_DIR / "healing_memory.json"
+
+_last_heartbeat = time.time()
+_last_heal_time = {}
 HEAL_COOLDOWN = 10  # seconds
 
-memory = []
+_memory = []
+_stop_event = threading.Event()
 
 # ===================== HEARTBEAT =====================
+
 def heartbeat():
-    global last_heartbeat
-    last_heartbeat = time.time()
+    global _last_heartbeat
+    _last_heartbeat = time.time()
 
 # ===================== MEMORY =====================
+
 def load_memory():
     try:
         with open(MEMORY_FILE, "r") as f:
             return json.load(f)
-    except:
+    except Exception:
         return []
 
 def save_memory():
-    with open(MEMORY_FILE, "w") as f:
-        json.dump(memory[-50:], f, indent=2)
+    try:
+        with open(MEMORY_FILE, "w") as f:
+            json.dump(_memory[-50:], f, indent=2)
+    except Exception:
+        pass
 
-memory = load_memory()
+_memory = load_memory()
 
 # ===================== EXPERIENCE BIAS =====================
-def past_success_rate(action):
-    relevant = [m for m in memory if m["decision"]["action"] == action]
+
+def past_success_rate(action: str) -> float:
+    relevant = [m for m in _memory if m["decision"]["action"] == action]
     if not relevant:
         return 0.5
     return sum(1 for m in relevant if m["success"]) / len(relevant)
 
 # ===================== SNAPSHOT =====================
-def snapshot(symptom):
+
+def snapshot(symptom: str, queue_size: int) -> dict:
     return {
         "symptom": symptom,
         "cpu": psutil.cpu_percent(interval=0.1),
         "ram": psutil.virtual_memory().percent,
-        "queue": main.command_queue.qsize(),
-        "heartbeat_age": round(time.time() - last_heartbeat, 2),
-        "history": memory[-3:]
+        "queue_size": queue_size,
+        "heartbeat_age": round(time.time() - _last_heartbeat, 2),
+        "recent_actions": _memory[-3:]
     }
 
-# ===================== AI THINKING =====================
-def think(snap):
-    prompt = f"""
-You are a calm, experienced human engineer.
+# ===================== THINK =====================
 
-SYSTEM STATE:
-{json.dumps(snap, indent=2)}
+def think(snapshot: dict) -> dict:
+    """
+    AI-assisted decision with safe fallback.
+    """
+    prompt = f"""
+You are a calm senior systems engineer.
+
+SYSTEM SNAPSHOT:
+{json.dumps(snapshot, indent=2)}
 
 Choose safest action:
 - observe
@@ -79,60 +94,58 @@ Respond ONLY JSON:
                 "temperature": 0.2,
                 "max_tokens": 150
             },
-            timeout=10
+            timeout=8
         )
 
         data = r.json()
-        if "choices" not in data:
-            return {"action": "observe", "confidence": 0.0, "explanation": "LLM unavailable"}
+        content = data["choices"][0]["message"]["content"]
+        decision = json.loads(content)
 
-        decision = json.loads(data["choices"][0]["message"]["content"])
-
-        # Cognitive bias
-        decision["confidence"] *= past_success_rate(decision["action"])
-        decision["confidence"] = round(decision["confidence"], 2)
-
+        bias = past_success_rate(decision["action"])
+        decision["confidence"] = round(decision["confidence"] * bias, 2)
         return decision
 
-    except Exception as e:
-        return {"action": "observe", "confidence": 0.0, "explanation": str(e)}
+    except Exception:
+        # 🔥 SAFE FALLBACK (NO AI)
+        return {"action": "observe", "confidence": 0.0, "explanation": "fallback"}
 
 # ===================== EXECUTION =====================
-def execute(action):
+
+def execute(action: str, brain_loop) -> bool:
     try:
         if action == "observe":
             return True
 
         if action == "clear_queue":
-            while not main.command_queue.empty():
-                main.command_queue.get_nowait()
-            return True
+            return True  # handled by brain safely
 
         if action == "restart_brain":
-            if past_success_rate("clear_queue") > 0.4:
-                BrainManager.restart(main.brain_loop)
-                main.speak("Recovered from a core issue, sir.")
-                return True
-            return False
+            if BrainManager.is_running():
+                BrainManager.restart(brain_loop)
+            return True
 
-    except:
+    except Exception:
         return False
 
     return False
 
-# ===================== CORE HEAL =====================
-def heal(symptom):
+# ===================== HEAL =====================
+
+def heal(symptom: str, queue_size: int, brain_loop):
     now = time.time()
-    if symptom in last_heal_time and now - last_heal_time[symptom] < HEAL_COOLDOWN:
-        return
 
-    last_heal_time[symptom] = now
+    if symptom in _last_heal_time:
+        if now - _last_heal_time[symptom] < HEAL_COOLDOWN:
+            return
 
-    snap = snapshot(symptom)
+    _last_heal_time[symptom] = now
+
+    snap = snapshot(symptom, queue_size)
     decision = think(snap)
-    success = execute(decision["action"])
+    success = execute(decision["action"], brain_loop)
+    print(f"🩺 Heal[{symptom}] → {decision['action']} ({decision['confidence']})")
 
-    memory.append({
+    _memory.append({
         "time": time.strftime("%Y-%m-%d %H:%M:%S"),
         "snapshot": snap,
         "decision": decision,
@@ -140,24 +153,31 @@ def heal(symptom):
     })
     save_memory()
 
-    if decision["confidence"] < 0.6 and decision["explanation"]:
-        main.speak(decision["explanation"])
-
 # ===================== MONITOR =====================
-def monitor():
-    while True:
+
+def monitor(queue_size_fn, brain_loop):
+    while not _stop_event.is_set():
         time.sleep(3)
 
-        if time.time() - last_heartbeat > 6:
-            heal("heartbeat_delay")
+        if time.time() - _last_heartbeat > 6:
+            heal("heartbeat_delay", queue_size_fn(), brain_loop)
 
         if psutil.virtual_memory().percent > 85:
-            heal("memory_pressure")
+            heal("memory_pressure", queue_size_fn(), brain_loop)
 
-        if main.command_queue.qsize() > 25:
-            heal("queue_overflow")
+        if queue_size_fn() > 25:
+            heal("queue_overflow", queue_size_fn(), brain_loop)
 
-# ===================== START =====================
-def start():
-    threading.Thread(target=monitor, daemon=True).start()
-    print("🧠 Healing arbiter online.")
+# ===================== CONTROL =====================
+
+def start(queue_size_fn, brain_loop):
+    _stop_event.clear()
+    threading.Thread(
+        target=monitor,
+        args=(queue_size_fn, brain_loop),
+        daemon=True
+    ).start()
+    print("🧠 Healing arbiter online")
+
+def stop():
+    _stop_event.set()

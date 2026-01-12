@@ -4,7 +4,7 @@ import sys
 from groq import Groq
 
 # 1. Setup Groq Client
-client = Groq(api_key="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")
+client = Groq(api_key="your groq api key")
 
 def show_diff(original, fixed):
     print("\n--- LINE-BY-LINE CHANGES (Red = Removed, Green = Added) ---")
